@@ -1,14 +1,12 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class Player : MonoBehaviour
 {
     [SerializeField]
-    private float moveSpeed = 5f;
+    private float movementSpeed;
 
     [SerializeField]
-    private float rotateSpeed = 0.1f;
+    private float rotationSensitivity;
 
     private PlayerInput playerInput;
     private Rigidbody2D body;
@@ -19,19 +17,18 @@ public class Player : MonoBehaviour
         body = GetComponent<Rigidbody2D>();
     }
 
-    void Update()
+    void FixedUpdate()
     {
         var move = playerInput.Player.Move.ReadValue<Vector2>();
+        Vector2 movement = movementSpeed * Time.fixedDeltaTime * (body.transform.right * move.x + body.transform.up * move.y);
+        body.MovePosition(body.position + movement);
+    }
+
+    void Update()
+    {
         var look = playerInput.Player.Look.ReadValue<Vector2>();
-
-        var velocity = moveSpeed * move;
-        var rotation = -(look.x * rotateSpeed);
-
-        body.velocity = velocity;
-        body.transform.Rotate(0.0f, 0.0f, rotation);
-
-        Debug.Log("Velocity " + velocity);
-        Debug.Log("Rotation " + rotation);
+        var rotation = -look.x * rotationSensitivity;
+        body.SetRotation(body.rotation + rotation);
     }
 
     private void OnEnable()
