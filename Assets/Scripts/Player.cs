@@ -17,6 +17,11 @@ public class Player : MonoBehaviour
         body = GetComponent<Rigidbody2D>();
     }
 
+    void Start()
+    {
+        Cursor.visible = false;
+    }
+
     void FixedUpdate()
     {
         var move = playerInput.Player.Move.ReadValue<Vector2>();
@@ -29,6 +34,18 @@ public class Player : MonoBehaviour
         var look = playerInput.Player.Look.ReadValue<Vector2>();
         var rotation = -look.x * rotationSensitivity;
         body.SetRotation(body.rotation + rotation);
+    }
+
+    void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.contactCount > 0)
+        {
+            var normal = collision.contacts[0].normal;
+            var angle = Vector2.SignedAngle(-normal, body.transform.up);
+            var sin = Mathf.Sin(angle * Mathf.Deg2Rad);
+            var cue = new Vector2(0.5f - 0.5f * sin, 0.5f + 0.5f * sin);
+            Debug.Log("Collision cue: " + cue);
+        }
     }
 
     private void OnEnable()
