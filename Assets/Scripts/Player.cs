@@ -1,4 +1,6 @@
+using System.Collections;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class Player : MonoBehaviour
 {
@@ -7,6 +9,9 @@ public class Player : MonoBehaviour
 
     [SerializeField]
     private float rotationSensitivity;
+
+    [SerializeField]
+    private float cueTime;
 
     private PlayerInput playerInput;
     private Rigidbody2D body;
@@ -20,6 +25,16 @@ public class Player : MonoBehaviour
     void Start()
     {
         Cursor.visible = false;
+    }
+
+    void OnEnable()
+    {
+        playerInput.Player.Enable();
+    }
+
+    void OnDisable()
+    {
+        playerInput.Player.Disable();
     }
 
     void FixedUpdate()
@@ -44,17 +59,15 @@ public class Player : MonoBehaviour
             var angle = Vector2.SignedAngle(-normal, body.transform.up);
             var sin = Mathf.Sin(angle * Mathf.Deg2Rad);
             var cue = new Vector2(0.5f - 0.5f * sin, 0.5f + 0.5f * sin);
-            Debug.Log("Collision cue: " + cue);
+            StartCoroutine(TriggerCue(cue, cueTime));
         }
     }
 
-    private void OnEnable()
+    private IEnumerator TriggerCue(Vector2 cue, float time)
     {
-        playerInput.Player.Enable();
-    }
-
-    private void OnDisable()
-    {
-        playerInput.Player.Disable();
+        Debug.Log("Collision cue: " + cue);
+        Gamepad.current.SetMotorSpeeds(cue[0], cue[1]);
+        yield return new WaitForSeconds(time);
+        Gamepad.current.SetMotorSpeeds(0.0f, 0.0f);
     }
 }
