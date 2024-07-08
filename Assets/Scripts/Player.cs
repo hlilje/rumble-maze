@@ -1,4 +1,6 @@
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -19,13 +21,14 @@ public class Player : MonoBehaviour
     private PlayerInput playerInput;
     private Rigidbody2D body;
 
-    private Collision2D currentCollision;
+    private List<ContactPoint2D> currentCollisions;
     private bool isPlayingTimedCue;
 
     void Awake()
     {
         playerInput = new PlayerInput();
         body = GetComponent<Rigidbody2D>();
+        currentCollisions = new List<ContactPoint2D>();
     }
 
     void Start()
@@ -64,8 +67,8 @@ public class Player : MonoBehaviour
         }
         else if (IsDraggingAlongWall())
         {
-            var cue = CalcCue(currentCollision) * wallTouchScale;
-            StartCue(cue);
+            var cue = CalcCue(currentCollisions.LastOrDefault()) * wallTouchScale;
+            PlayCue(cue);
         }
         else
         {
@@ -77,45 +80,51 @@ public class Player : MonoBehaviour
     {
         if (collision.contactCount > 0)
         {
-            currentCollision = collision;
-            var cue = CalcCue(currentCollision);
+            currentCollisions.Add(collision.GetContact(0));
+            var cue = CalcCue(currentCollisions.Last());
             StartCoroutine(TriggerCue(cue, cueTime));
         }
     }
 
     void OnCollisionExit2D(Collision2D collision)
     {
-        currentCollision = null;
+        // Not entirely correct but good enough
+        if (currentCollisions.Count > 0)
+        {
+            currentCollisions.RemoveAt(0);
+        }
     }
 
     private bool IsDraggingAlongWall()
     {
-        return currentCollision != null && body.velocity.magnitude >= 0.01;
+        return currentCollisions.Count > 0 && body.velocity.magnitude >= 0.01;
     }
 
-    private Vector2 CalcCue(Collision2D collision)
+    private Vector2 CalcCue(ContactPoint2D contactPoint)
     {
-        var normal = collision.contacts[0].normal;
+        var normal = contactPoint.normal;
         var angle = Vector2.SignedAngle(-normal, body.transform.up);
         var sin = Mathf.Sin(angle * Mathf.Deg2Rad);
         return new Vector2(0.5f - 0.5f * sin, 0.5f + 0.5f * sin);
     }
 
-    private void StartCue(Vector2 cue)
+    private void PlayCue(Vector2 cue)
     {
-        Gamepad.current.SetMotorSpeeds(cue[0], cue[1]);
+        Gamepad.current?.SetMotorSpeeds(cue[0], cue[1]);
+        if (cue.magnitude >= 0.01)
+        {
+            Debug.Log("Playing cue: " + cue);
+        }
     }
 
     private void StopCue()
     {
-        Gamepad.current.SetMotorSpeeds(0.0f, 0.0f);
+        Gamepad.current?.SetMotorSpeeds(0.0f, 0.0f);
     }
 
     private IEnumerator TriggerCue(Vector2 cue, float time)
     {
-        Debug.Log("Collision cue: " + cue);
-
-        StartCue(cue);
+        PlayCue(cue);
         isPlayingTimedCue = true;
 
         yield return new WaitForSeconds(time);
