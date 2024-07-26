@@ -6,6 +6,17 @@ using UnityEngine.InputSystem;
 
 public class Player : MonoBehaviour
 {
+    struct Cue
+    {
+        public Vector2 orientation;
+        public Vector2 intensity;
+
+        public override readonly string ToString()
+        {
+            return "Orientation: " + orientation + " Intensity: " + intensity;
+        }
+    }
+
     [SerializeField]
     private float movementSpeed;
 
@@ -20,14 +31,17 @@ public class Player : MonoBehaviour
 
     private PlayerInput playerInput;
     private Rigidbody2D body;
+    private AudioSource audioSource;
 
     private List<ContactPoint2D> currentCollisions;
+    private bool isPlayingCue;
     private bool isPlayingTimedCue;
 
     void Awake()
     {
         playerInput = new PlayerInput();
         body = GetComponent<Rigidbody2D>();
+        audioSource = CreateCueAudioSource();
         currentCollisions = new List<ContactPoint2D>();
     }
 
@@ -51,7 +65,7 @@ public class Player : MonoBehaviour
     void FixedUpdate()
     {
         var move = playerInput.Player.Move.ReadValue<Vector2>();
-        Vector2 movement = movementSpeed * (body.transform.right * move.x + body.transform.up * move.y);
+        var movement = movementSpeed * (body.transform.right * move.x + body.transform.up * move.y);
         body.AddForce(movement);
     }
 
@@ -67,10 +81,10 @@ public class Player : MonoBehaviour
         }
         else if (IsDraggingAlongWall())
         {
-            var cue = CalcCue(currentCollisions.LastOrDefault()) * wallTouchScale;
+            var cue = CalcCue(currentCollisions.LastOrDefault(), wallTouchScale);
             PlayCue(cue);
         }
-        else
+        else if (isPlayingCue)
         {
             StopCue();
         }
@@ -81,7 +95,7 @@ public class Player : MonoBehaviour
         if (collision.contactCount > 0)
         {
             currentCollisions.Add(collision.GetContact(0));
-            var cue = CalcCue(currentCollisions.Last());
+            var cue = CalcCue(currentCollisions.Last(), 1.0f);
             StartCoroutine(TriggerCue(cue, cueTime));
         }
     }
@@ -97,32 +111,46 @@ public class Player : MonoBehaviour
 
     private bool IsDraggingAlongWall()
     {
-        return currentCollisions.Count > 0 && body.velocity.magnitude >= 0.01;
+        return currentCollisions.Count > 0 && body.velocity.magnitude >= 0.01f;
     }
 
-    private Vector2 CalcCue(ContactPoint2D contactPoint)
+    private Cue CalcCue(ContactPoint2D contactPoint, float intensity)
     {
         var normal = contactPoint.normal;
         var angle = Vector2.SignedAngle(-normal, body.transform.up);
         var sin = Mathf.Sin(angle * Mathf.Deg2Rad);
-        return new Vector2(0.5f - 0.5f * sin, 0.5f + 0.5f * sin);
+
+        Cue cue;
+        cue.orientation = new Vector2(0.5f - 0.5f * sin, 0.5f + 0.5f * sin);
+        cue.intensity = cue.orientation * intensity;
+
+        return cue;
     }
 
-    private void PlayCue(Vector2 cue)
+    private void PlayCue(Cue cue)
     {
-        Gamepad.current?.SetMotorSpeeds(cue[0], cue[1]);
-        if (cue.magnitude >= 0.01)
+        Gamepad.current?.SetMotorSpeeds(cue.intensity[0], cue.intensity[1]);
+        if (!audioSource.isPlaying)
         {
-            Debug.Log("Playing cue: " + cue);
+            audioSource.Play();
         }
+        audioSource.volume = cue.intensity[1] + cue.intensity[0];
+        audioSource.panStereo = cue.orientation[1] - cue.orientation[0];
+
+        isPlayingCue = true;
+        Debug.Log("Playing cue: " + cue);
     }
 
     private void StopCue()
     {
         Gamepad.current?.SetMotorSpeeds(0.0f, 0.0f);
+        audioSource.Stop();
+
+        isPlayingCue = false;
+        Debug.Log("Stopping cue");
     }
 
-    private IEnumerator TriggerCue(Vector2 cue, float time)
+    private IEnumerator TriggerCue(Cue cue, float time)
     {
         PlayCue(cue);
         isPlayingTimedCue = true;
@@ -135,5 +163,24 @@ public class Player : MonoBehaviour
         }
 
         isPlayingTimedCue = false;
+    }
+
+    private AudioSource CreateCueAudioSource()
+    {
+        var SAMPLE_FREQUENCY = 44100;
+        var SAMPLE_LENGTH = SAMPLE_FREQUENCY;
+        var SINE_SAMPLE_LENGTH = 200;
+        var audioData = new float[SAMPLE_LENGTH];
+        for (int i = 0; i < SAMPLE_LENGTH; ++i)
+        {
+            audioData[i] = Mathf.Sin((float)(i % SINE_SAMPLE_LENGTH) / (float)SINE_SAMPLE_LENGTH * Mathf.PI * 2);
+        }
+
+        var audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.clip = AudioClip.Create("Cue", SAMPLE_LENGTH, 1, SAMPLE_FREQUENCY, false);
+        audioSource.clip.SetData(audioData, 0);
+        audioSource.loop = true;
+
+        return audioSource;
     }
 }
