@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class Player : MonoBehaviour
+class Player : MonoBehaviour
 {
     struct Cue
     {
@@ -18,24 +18,28 @@ public class Player : MonoBehaviour
     }
 
     [SerializeField]
-    private float movementSpeed;
+    float movementSpeed;
 
     [SerializeField]
-    private float rotationSensitivity;
+    float rotationSensitivity;
 
     [SerializeField]
-    private float cueTime;
+    float cueTime;
 
     [SerializeField]
-    private float wallTouchScale;
+    float wallTouchScale;
 
-    private PlayerInput playerInput;
-    private Rigidbody2D body;
-    private AudioSource audioSource;
+    GameObject mainCamera;
 
-    private List<ContactPoint2D> currentCollisions;
-    private bool isPlayingCue;
-    private bool isPlayingTimedCue;
+    PlayerInput playerInput;
+    Rigidbody2D body;
+    AudioSource audioSource;
+
+    List<ContactPoint2D> currentCollisions;
+
+    bool showWalls = true;
+    bool isPlayingCue;
+    bool isPlayingTimedCue;
 
     void Awake()
     {
@@ -47,6 +51,7 @@ public class Player : MonoBehaviour
 
     void Start()
     {
+        mainCamera = GameObject.Find("Main Camera");
         Cursor.visible = false;
     }
 
@@ -88,6 +93,10 @@ public class Player : MonoBehaviour
         {
             StopCue();
         }
+
+        var cameraPosition = mainCamera.transform.position;
+        var playerPosition = body.transform.position;
+        mainCamera.transform.position = new Vector3(playerPosition.x, playerPosition.y, cameraPosition.z);
     }
 
     void OnCollisionEnter2D(Collision2D collision)
@@ -109,12 +118,22 @@ public class Player : MonoBehaviour
         }
     }
 
-    private bool IsDraggingAlongWall()
+    void OnToggleWalls()
+    {
+        showWalls = !showWalls;
+
+        foreach (GameObject wall in GameObject.FindGameObjectsWithTag("Wall"))
+        {
+            wall.GetComponent<Renderer>().enabled = showWalls;
+        }
+    }
+
+    bool IsDraggingAlongWall()
     {
         return currentCollisions.Count > 0 && body.velocity.magnitude >= 0.01f;
     }
 
-    private Cue CalcCue(ContactPoint2D contactPoint, float intensity)
+    Cue CalcCue(ContactPoint2D contactPoint, float intensity)
     {
         var normal = contactPoint.normal;
         var angle = Vector2.SignedAngle(-normal, body.transform.up);
@@ -127,7 +146,7 @@ public class Player : MonoBehaviour
         return cue;
     }
 
-    private void PlayCue(Cue cue)
+    void PlayCue(Cue cue)
     {
         Gamepad.current?.SetMotorSpeeds(cue.intensity[0], cue.intensity[1]);
         if (!audioSource.isPlaying)
@@ -141,7 +160,7 @@ public class Player : MonoBehaviour
         Debug.Log("Playing cue: " + cue);
     }
 
-    private void StopCue()
+    void StopCue()
     {
         Gamepad.current?.SetMotorSpeeds(0.0f, 0.0f);
         audioSource.Stop();
@@ -150,7 +169,7 @@ public class Player : MonoBehaviour
         Debug.Log("Stopping cue");
     }
 
-    private IEnumerator TriggerCue(Cue cue, float time)
+    IEnumerator TriggerCue(Cue cue, float time)
     {
         PlayCue(cue);
         isPlayingTimedCue = true;
@@ -165,7 +184,7 @@ public class Player : MonoBehaviour
         isPlayingTimedCue = false;
     }
 
-    private AudioSource CreateCueAudioSource()
+    AudioSource CreateCueAudioSource()
     {
         var SAMPLE_FREQUENCY = 44100;
         var SAMPLE_LENGTH = SAMPLE_FREQUENCY;
