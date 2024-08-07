@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 class Player : MonoBehaviour
 {
@@ -27,6 +28,9 @@ class Player : MonoBehaviour
     float cueTime;
 
     [SerializeField]
+    float restartTime;
+
+    [SerializeField]
     float wallTouchScale;
 
     GameObject mainCamera;
@@ -37,7 +41,7 @@ class Player : MonoBehaviour
 
     List<ContactPoint2D> currentCollisions;
 
-    bool showWalls = true;
+    bool showWalls = false;
     bool isPlayingCue;
     bool isPlayingTimedCue;
 
@@ -53,6 +57,7 @@ class Player : MonoBehaviour
     {
         mainCamera = GameObject.Find("Main Camera");
         Cursor.visible = false;
+        ShowWalls(showWalls);
     }
 
     void OnEnable()
@@ -111,21 +116,24 @@ class Player : MonoBehaviour
 
     void OnCollisionExit2D(Collision2D collision)
     {
-        // Not entirely correct but good enough
         if (currentCollisions.Count > 0)
         {
             currentCollisions.RemoveAt(0);
         }
     }
 
+    void OnTriggerEnter2D(Collider2D collider)
+    {
+        if (collider.gameObject.name == "WinArea")
+        {
+            Debug.Log("Win!");
+            StartCoroutine(TriggerRestart(restartTime));
+        }
+    }
+
     void OnToggleWalls()
     {
-        showWalls = !showWalls;
-
-        foreach (GameObject wall in GameObject.FindGameObjectsWithTag("Wall"))
-        {
-            wall.GetComponent<Renderer>().enabled = showWalls;
-        }
+        ShowWalls(!showWalls);
     }
 
     bool IsDraggingAlongWall()
@@ -184,6 +192,13 @@ class Player : MonoBehaviour
         isPlayingTimedCue = false;
     }
 
+    IEnumerator TriggerRestart(float time)
+    {
+        ShowWalls(true);
+        yield return new WaitForSeconds(time);
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
     AudioSource CreateCueAudioSource()
     {
         var SAMPLE_FREQUENCY = 44100;
@@ -201,5 +216,16 @@ class Player : MonoBehaviour
         audioSource.loop = true;
 
         return audioSource;
+    }
+
+    void ShowWalls(bool inShowWalls)
+    {
+        showWalls = inShowWalls;
+
+        foreach (GameObject wall in GameObject.FindGameObjectsWithTag("Wall"))
+        {
+            wall.GetComponent<Renderer>().enabled = showWalls;
+        }
+        GameObject.FindGameObjectWithTag("Finish").GetComponent<Renderer>().enabled = showWalls;
     }
 }
