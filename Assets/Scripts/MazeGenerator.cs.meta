@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 32eda82d14f312a40b6544dec946c00b
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - wallPrefab: {instanceID: 0}
+  - playerPrefab: {instanceID: 0}
+  - winAreaPrefab: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
