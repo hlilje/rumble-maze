@@ -12,13 +12,13 @@ public class MazeGenerator : MonoBehaviour
     public GameObject winAreaPrefab;
 
     bool[,] visited;
-    bool[,] edges;
+    bool[,] edge;
     Stack<(int, int)> stack;
 
     void Start()
     {
         visited = new bool[mazeSize, mazeSize];
-        edges = new bool[edgeSize, edgeSize];
+        edge = new bool[edgeSize, edgeSize];
         stack = new Stack<(int, int)>();
 
         static bool IsEdge(int x) => x == 0 || x == edgeSize - 1 || (x % 2 == 0);
@@ -26,7 +26,7 @@ public class MazeGenerator : MonoBehaviour
         {
             for (var y = 0; y < edgeSize; ++y)
             {
-                edges[x, y] = IsEdge(x) || IsEdge(y);
+                edge[x, y] = IsEdge(x) || IsEdge(y);
             }
         }
 
@@ -59,26 +59,26 @@ public class MazeGenerator : MonoBehaviour
 
                 var neighbour = neighbours[Random.Range(0, neighbours.Count)];
                 (int bX, int bY) = neighbour;
-                edges[aX + bX + 1, aY + bY + 1] = false;
+                edge[aX + bX + 1, aY + bY + 1] = false;
                 visited[bX, bY] = true;
 
                 stack.Push(neighbour);
             }
         }
 
+        var wallSize = wallPrefab.transform.localScale.x;
         for (var x = 0; x < edgeSize; ++x)
         {
             for (var y = 0; y < edgeSize; ++y)
             {
-                if (edges[x, y])
+                if (edge[x, y])
                 {
-                    var size = wallPrefab.transform.localScale.x;
-                    Instantiate(wallPrefab, new Vector3(x * size, y * size), Quaternion.identity);
+                    Instantiate(wallPrefab, new Vector3(x * wallSize, y * wallSize), Quaternion.identity);
                 }
             }
         }
 
-        Instantiate(playerPrefab, new Vector3(-2, -2), Quaternion.identity);
-        Instantiate(winAreaPrefab, new Vector3(32, 32), Quaternion.identity);
+        Instantiate(playerPrefab, new Vector3(wallSize, wallSize), Quaternion.identity);
+        Instantiate(winAreaPrefab, new Vector3(wallSize * (edgeSize - 2), wallSize * (edgeSize - 2)), Quaternion.identity);
     }
 }
