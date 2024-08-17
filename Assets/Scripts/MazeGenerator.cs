@@ -3,30 +3,38 @@ using UnityEngine;
 
 public class MazeGenerator : MonoBehaviour
 {
-    static readonly int mazeSize = 10;
-    static readonly int edgeSize = mazeSize * 2 + 1;
-    static readonly (int, int)[] directions = {(1, 0), (-1, 0), (0, 1), (0, -1)};
+    [SerializeField]
+    int mazeSize;
 
     public GameObject wallPrefab;
     public GameObject playerPrefab;
     public GameObject winAreaPrefab;
 
+    CameraManager cameraManager;
+
+    int edgeSize;
+    float wallSize;
+
     bool[,] visited;
     bool[,] edge;
     Stack<(int, int)> stack;
 
-    void Start()
+    static readonly (int, int)[] directions = {(1, 0), (-1, 0), (0, 1), (0, -1)};
+
+    void Awake()
     {
+        edgeSize = mazeSize * 2 + 1;
+        wallSize = wallPrefab.transform.localScale.x;
         visited = new bool[mazeSize, mazeSize];
         edge = new bool[edgeSize, edgeSize];
         stack = new Stack<(int, int)>();
 
-        static bool IsEdge(int x) => x == 0 || x == edgeSize - 1 || (x % 2 == 0);
+        static bool IsEdge(int x, int edgeSize) => x == 0 || x == edgeSize - 1 || (x % 2 == 0);
         for (var x = 0; x < edgeSize; ++x)
         {
             for (var y = 0; y < edgeSize; ++y)
             {
-                edge[x, y] = IsEdge(x) || IsEdge(y);
+                edge[x, y] = IsEdge(x, edgeSize) || IsEdge(y, edgeSize);
             }
         }
 
@@ -66,19 +74,27 @@ public class MazeGenerator : MonoBehaviour
             }
         }
 
-        var wallSize = wallPrefab.transform.localScale.x;
         for (var x = 0; x < edgeSize; ++x)
         {
             for (var y = 0; y < edgeSize; ++y)
             {
                 if (edge[x, y])
                 {
-                    Instantiate(wallPrefab, new Vector3(x * wallSize, y * wallSize), Quaternion.identity);
+                    var wall = Instantiate(wallPrefab, new Vector3(x * wallSize, y * wallSize), Quaternion.identity);
+                    wall.name = "Wall";
                 }
             }
         }
 
-        Instantiate(playerPrefab, new Vector3(wallSize, wallSize), Quaternion.identity);
-        Instantiate(winAreaPrefab, new Vector3(wallSize * (edgeSize - 2), wallSize * (edgeSize - 2)), Quaternion.identity);
+        var player = Instantiate(playerPrefab, new Vector3(wallSize, wallSize), Quaternion.identity);
+        player.name = "Player";
+        var winArea = Instantiate(winAreaPrefab, new Vector3(wallSize * (edgeSize - 2), wallSize * (edgeSize - 2)), Quaternion.identity);
+        winArea.name = "WinArea";
+    }
+
+    void Start()
+    {
+        cameraManager = GameObject.Find("CameraManager").GetComponent<CameraManager>();
+        cameraManager.OnMazeGenerated(edgeSize, wallSize * edgeSize);
     }
 }
