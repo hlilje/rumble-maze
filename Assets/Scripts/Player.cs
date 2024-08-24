@@ -40,7 +40,7 @@ class Player : MonoBehaviour
     Rigidbody2D body;
     AudioSource audioSource;
 
-    List<ContactPoint2D> currentCollisions;
+    List<(GameObject, ContactPoint2D)> currentCollisions;
 
     bool isPlayingCue;
     bool isPlayingTimedCue;
@@ -50,7 +50,7 @@ class Player : MonoBehaviour
         playerInput = new PlayerInput();
         body = GetComponent<Rigidbody2D>();
         audioSource = CreateCueAudioSource();
-        currentCollisions = new List<ContactPoint2D>();
+        currentCollisions = new List<(GameObject, ContactPoint2D)>();
     }
 
     void Start()
@@ -90,7 +90,7 @@ class Player : MonoBehaviour
         }
         else if (IsDraggingAlongWall())
         {
-            var cue = CalcCue(currentCollisions.LastOrDefault(), wallTouchScale);
+            var cue = CalcCue(currentCollisions.LastOrDefault().Item2, wallTouchScale);
             PlayCue(cue);
         }
         else if (isPlayingCue)
@@ -103,18 +103,26 @@ class Player : MonoBehaviour
     {
         if (collision.contactCount > 0)
         {
-            currentCollisions.Add(collision.GetContact(0));
-            var cue = CalcCue(currentCollisions.Last(), 1.0f);
-            StartCoroutine(TriggerCue(cue, cueTime));
+            currentCollisions.Add((collision.gameObject, collision.GetContact(0)));
+            var playCue = currentCollisions.Count() == 1;
+            if (!playCue)
+            {
+                var currentCollision = currentCollisions.Last().Item1.transform.position;
+                var previousCollision = currentCollisions[currentCollisions.Count() - 2].Item1.transform.position;
+                // Avoid triggering cues when transitioning over block boundaries along a straight wall
+                playCue = currentCollision.x != previousCollision.x && currentCollision.y != previousCollision.y;
+            }
+            if (playCue)
+            {
+                var cue = CalcCue(currentCollisions.Last().Item2, 1.0f);
+                StartCoroutine(TriggerCue(cue, cueTime));
+            }
         }
     }
 
     void OnCollisionExit2D(Collision2D collision)
     {
-        if (currentCollisions.Count > 0)
-        {
-            currentCollisions.RemoveAt(0);
-        }
+        currentCollisions.Remove(currentCollisions.Single(x => x.Item1 == collision.gameObject));
     }
 
     void OnTriggerEnter2D(Collider2D collider)
