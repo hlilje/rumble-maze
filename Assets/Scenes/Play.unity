@@ -334,7 +334,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 32eda82d14f312a40b6544dec946c00b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mazeSize: 10
+  mazeSize: 8
   wallPrefab: {fileID: 5578656795651115088, guid: c543831e377291b459044dc34d06b8f0, type: 3}
   playerPrefab: {fileID: 3206372160128823009, guid: 279ee57a40508ba419dcf75425e60ef3, type: 3}
   winAreaPrefab: {fileID: 6936818611356400905, guid: 15a3c5d7cfde87042a1a8fdc2bbdc1ea, type: 3}
